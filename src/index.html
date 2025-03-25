@@ -24,6 +24,20 @@
       border: none;
       font-size: 24px;
     }
+    #instructions {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      z-index: 10;
+      text-align: center;
+      transition: opacity 1.5s;
+    }
   </style>
 </head>
 <body>
@@ -34,6 +48,21 @@
     <button class="control-btn" id="moveRight">→</button>
     <button class="control-btn" id="moveBack">↓</button>
   </div>
+
+  <div id="instructions">
+    操作方法:<br>
+    ・WASD: キーボードで移動<br>
+    ・タッチボタン: 画面下部のボタンで移動<br>
+    ・ゲームパッド: 左スティックで移動、右スティックでカメラ回転
+  </div>
+
   <script type="module" src="./main.js"></script>
+  <script>
+    // 5秒後に説明文を徐々に消す
+    setTimeout(() => {
+      const instructions = document.getElementById('instructions');
+      instructions.style.opacity = '0';
+    }, 5000);
+  </script>
 </body>
 </html> 
