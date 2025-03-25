@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D箱庭アプリケーション</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      gap: 20px;
+    }
+    .control-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      border: none;
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="controls">
+    <button class="control-btn" id="moveForward">↑</button>
+    <button class="control-btn" id="moveLeft">←</button>
+    <button class="control-btn" id="moveRight">→</button>
+    <button class="control-btn" id="moveBack">↓</button>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html> 
