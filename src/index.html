@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>3D箱庭アプリケーション</title>
+  <style>
+    body { margin: 0; overflow: hidden; touch-action: none; }
+    canvas { display: block; }
+    #instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      z-index: 10;
+      text-align: center;
+      transition: opacity 1.5s;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="instructions">
+    操作方法:<br>
+    ・WASD: キーボードで移動<br>
+    ・タップ: 画面をタップして移動<br>
+    ・ゲームパッド: 左スティックで移動、右スティックでカメラ回転
+  </div>
+
+  <script type="module" src="./main.js"></script>
+  <script>
+    // 5秒後に説明文を徐々に消す
+    setTimeout(() => {
+      const instructions = document.getElementById('instructions');
+      instructions.style.opacity = '0';
+    }, 5000);
+    
+    // ダブルタップによる拡大を防止
+    document.addEventListener('touchstart', function(event) {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+      }
+    }, { passive: false });
+    
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+    
+    // ピンチによるズームを防止
+    document.addEventListener('gesturestart', function(event) {
+      event.preventDefault();
+    }, { passive: false });
+  </script>
+</body>
+</html> 
