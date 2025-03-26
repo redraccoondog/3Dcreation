@@ -154,6 +154,7 @@ class Character {
                     // デフォルト設定
                     action.setLoop(THREE.LoopRepeat);
                     action.clampWhenFinished = false;
+                    action.timeScale = 1.0; // 速度を標準に設定
                     
                     // アクションを保存
                     this.animations[clip.name] = action;
@@ -169,12 +170,23 @@ class Character {
                 console.log(`- 歩行: ${this.ANIMATION_WALK}`);
                 console.log(`- 走行: ${this.ANIMATION_RUN}`);
                 
-                // 最初はアイドルアニメーションを開始
-                this.currentAnimation = null;
-                this.playAnimation(this.ANIMATION_IDLE);
+                // モデル読み込み直後のアニメーション準備
+                setTimeout(() => {
+                    console.log('モデル読み込み完了: アイドルアニメーション初期化');
+                    this.currentAnimation = null;
+                    this.playAnimation(this.ANIMATION_IDLE);
+                }, 100);
             } else {
                 console.warn('モデルにアニメーションが含まれていません！');
             }
+        }, 
+        // 読み込み進捗状況
+        (xhr) => {
+            console.log(`モデル読み込み進捗: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+        },
+        // エラー処理
+        (error) => {
+            console.error('モデル読み込みエラー:', error);
         });
     }
     
@@ -337,13 +349,19 @@ class Character {
                         this.dummyBox.position.copy(this.position);
                     }
                     
-                    // 距離に応じてアニメーションを選択
+                    // 毎フレーム距離に応じてアニメーションを確実に選択
                     if (distance > 5) {
                         // 走行アニメーション
-                        this.playAnimation(this.ANIMATION_RUN);
+                        if (this.currentAnimation !== this.ANIMATION_RUN) {
+                            console.log('移動中: 走行アニメーションに切替');
+                            this.playAnimation(this.ANIMATION_RUN);
+                        }
                     } else {
                         // 歩行アニメーション
-                        this.playAnimation(this.ANIMATION_WALK);
+                        if (this.currentAnimation !== this.ANIMATION_WALK) {
+                            console.log('移動中: 歩行アニメーションに切替');
+                            this.playAnimation(this.ANIMATION_WALK);
+                        }
                     }
                 } else {
                     // 目的地に到着
@@ -361,6 +379,7 @@ class Character {
                     this.totalMovedDistance = 0;
                     
                     // アイドルアニメーション
+                    console.log('目的地到着: アイドルアニメーションに切替');
                     this.playAnimation(this.ANIMATION_IDLE);
                 }
             } else {
@@ -371,6 +390,7 @@ class Character {
                 this.totalMovedDistance = 0;
                 
                 // アイドルアニメーション
+                console.log('目的地到着: アイドルアニメーションに切替');
                 this.playAnimation(this.ANIMATION_IDLE);
             }
         }
@@ -411,13 +431,19 @@ class Character {
         this.targetPosition = adjustedTarget;
         this.isMoving = true;
         
+        console.log(`移動開始: 距離=${distance.toFixed(2)}, モデル=${this.model ? '読み込み済み' : '未読み込み'}`);
+        
         // 距離に応じて初期アニメーションを設定
         if (distance > 5) {
             // 遠距離なら走行アニメーション
-            this.playAnimation(this.ANIMATION_RUN);
+            console.log('走行アニメーション開始');
+            const result = this.playAnimation(this.ANIMATION_RUN);
+            console.log(`アニメーション再生結果: ${result ? '成功' : '失敗'}`);
         } else {
             // 近距離なら歩行アニメーション
-            this.playAnimation(this.ANIMATION_WALK);
+            console.log('歩行アニメーション開始');
+            const result = this.playAnimation(this.ANIMATION_WALK);
+            console.log(`アニメーション再生結果: ${result ? '成功' : '失敗'}`);
         }
         
         return true;
