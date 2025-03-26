@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "deploy-and-commit": "npm run deploy && git add . && git commit -m \"デプロイ更新\" && git push"
   },
   "keywords": [
     "three.js",
