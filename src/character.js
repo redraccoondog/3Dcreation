@@ -349,19 +349,11 @@ class Character {
                         this.dummyBox.position.copy(this.position);
                     }
                     
-                    // 毎フレーム距離に応じてアニメーションを確実に選択
+                    // 移動中は必ず歩行か走行アニメーションを再生
                     if (distance > 5) {
-                        // 走行アニメーション
-                        if (this.currentAnimation !== this.ANIMATION_RUN) {
-                            console.log('移動中: 走行アニメーションに切替');
-                            this.playAnimation(this.ANIMATION_RUN);
-                        }
+                        this.playAnimation(this.ANIMATION_RUN); // 遠い場合は走行
                     } else {
-                        // 歩行アニメーション
-                        if (this.currentAnimation !== this.ANIMATION_WALK) {
-                            console.log('移動中: 歩行アニメーションに切替');
-                            this.playAnimation(this.ANIMATION_WALK);
-                        }
+                        this.playAnimation(this.ANIMATION_WALK); // 近い場合は歩行
                     }
                 } else {
                     // 目的地に到着
