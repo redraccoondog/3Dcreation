@@ -183,9 +183,15 @@ function handleGamepadInput() {
     gamepadStatusElement.textContent = 'ゲームパッド: 接続中';
     gamepadStatusElement.style.background = 'rgba(0, 128, 0, 0.5)';
     
-    // 左スティックの入力を取得
-    const leftX = getLeftStickX();
-    const leftY = getLeftStickY();
+    // // 左スティックの入力を取得
+    // const leftX = getLeftStickX();
+    // const leftY = getLeftStickY();
+
+    // --- Debug: Use RIGHT stick input for LEFT stick logic ---
+    console.log("デバッグ: 右スティックを左スティック入力として使用");
+    const leftX = getRightStickX(); // 右スティックのX軸を使用
+    const leftY = getRightStickY(); // 右スティックのY軸を使用 (※符号注意)
+    // -------------------------------------------------------
     
     const deadZone = 0.1;
     if (Math.abs(leftX) > deadZone || Math.abs(leftY) > deadZone) {
