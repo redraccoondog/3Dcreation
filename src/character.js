@@ -320,61 +320,42 @@ class Character {
             }
             
             // 向きを更新
-            if (distance > 0.1) {
-                const newDirection = direction.clone().normalize();
-                
-                // 滑らかな回転
-                this.direction.lerp(newDirection, this.rotationSpeed);
-                this.direction.normalize();
-                
-                // 方向を更新
-                this.arrowHelper.position.copy(this.position);
-                this.arrowHelper.setDirection(this.direction);
+            if (this.model) {
+                // モデルの向きを更新
+                const targetAngle = Math.atan2(this.direction.x, this.direction.z);
+                this.model.rotation.y = targetAngle;
+            }
+
+            // --- アニメーション再生ロジックを移動 ---
+            // 移動中は目的地に到着するまで歩行か走行アニメーションを再生
+            const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
+            if (this.currentAnimation !== targetAnimation) {
+                console.log(`タップ移動中: アニメーション切替 ${targetAnimation} (距離: ${distance.toFixed(2)})`);
+                this.playAnimation(targetAnimation);
+            }
+            // -------------------------------------
+            
+            // 移動処理
+            if (distance > this.movementSpeed) {
+                // 移動方向に進む
+                const moveVector = this.direction.clone().multiplyScalar(this.movementSpeed);
+                this.position.add(moveVector);
                 
                 if (this.model) {
-                    // モデルの向きを更新
-                    const targetAngle = Math.atan2(this.direction.x, this.direction.z);
-                    this.model.rotation.y = targetAngle;
-                }
-                
-                // 移動処理
-                if (distance > this.movementSpeed) {
-                    // 移動方向に進む
-                    const moveVector = this.direction.clone().multiplyScalar(this.movementSpeed);
-                    this.position.add(moveVector);
-                    
-                    if (this.model) {
-                        this.model.position.copy(this.position);
-                    } else {
-                        this.dummyBox.position.copy(this.position);
-                    }
-                    
-                    // 移動中は必ず歩行か走行アニメーションを再生（修正箇所）
-                    const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
-                    if (this.currentAnimation !== targetAnimation) {
-                        this.playAnimation(targetAnimation);
-                    }
+                    this.model.position.copy(this.position);
                 } else {
-                    // 目的地に到着
-                    this.position.copy(this.targetPosition);
-                    
-                    if (this.model) {
-                        this.model.position.copy(this.position);
-                    } else {
-                        this.dummyBox.position.copy(this.position);
-                    }
-                    
-                    this.isMoving = false;
-                    this.targetPosition = null;
-                    this.moveStuckTimer = 0;
-                    this.totalMovedDistance = 0;
-                    
-                    // アイドルアニメーション
-                    console.log('目的地到着: アイドルアニメーションに切替');
-                    this.playAnimation(this.ANIMATION_IDLE);
+                    this.dummyBox.position.copy(this.position);
                 }
             } else {
-                // 十分近づいたら到着とみなす
+                // 目的地に到着
+                this.position.copy(this.targetPosition);
+                
+                if (this.model) {
+                    this.model.position.copy(this.position);
+                } else {
+                    this.dummyBox.position.copy(this.position);
+                }
+                
                 this.isMoving = false;
                 this.targetPosition = null;
                 this.moveStuckTimer = 0;
