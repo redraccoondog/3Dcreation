@@ -190,7 +190,7 @@ class Character {
         });
     }
     
-    // アニメーション再生（フェード処理付き）
+    // アニメーション再生（フェード処理付き） => （即時切り替えに変更）
     playAnimation(animationName) {
         if (!this.mixer || !this.animations[animationName]) {
             console.warn(`アニメーション "${animationName}" が存在しません`);
@@ -204,16 +204,16 @@ class Character {
         
         console.log(`アニメーション切替: ${this.currentAnimation || 'なし'} -> ${animationName}`);
         
-        // 前のアニメーションをフェードアウト
+        // 前のアニメーションを停止
         if (this.currentAnimation && this.animations[this.currentAnimation]) {
             const prevAction = this.animations[this.currentAnimation];
-            prevAction.fadeOut(0.5);
+            prevAction.stop(); // フェードアウトの代わりに停止
         }
         
-        // 新しいアニメーションをフェードイン
+        // 新しいアニメーションを再生
         const action = this.animations[animationName];
         action.reset();
-        action.fadeIn(0.5);
+        // action.fadeIn(0.5); // フェードインの代わりに即時再生
         action.play();
         
         // 現在のアニメーションを更新
