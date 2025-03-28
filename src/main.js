@@ -189,22 +189,27 @@ function handleGamepadInput() {
     
     const deadZone = 0.1;
     if (Math.abs(leftX) > deadZone || Math.abs(leftY) > deadZone) {
-      // カメラの方向を取得 (XZ平面)
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection);
-      cameraDirection.y = 0;
-      cameraDirection.normalize();
-      
-      // カメラの右方向を計算
-      const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(); // Note: camera.up should be (0,1,0)
+      // // カメラの方向を取得 (XZ平面)
+      // const cameraDirection = new THREE.Vector3();
+      // camera.getWorldDirection(cameraDirection);
+      // cameraDirection.y = 0;
+      // cameraDirection.normalize();
+      // 
+      // // カメラの右方向を計算
+      // const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(); // Note: camera.up should be (0,1,0)
 
-      // スティック入力に基づいて移動方向を計算
-      // 前後方向 (スティックY -> カメラ前方/後方)
-      const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
-      // 左右方向 (スティックX -> カメラ右方/左方)
-      const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
+      // // スティック入力に基づいて移動方向を計算
+      // // 前後方向 (スティックY -> カメラ前方/後方)
+      // const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
+      // // 左右方向 (スティックX -> カメラ右方/左方)
+      // const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
 
-      desiredDirection.addVectors(forwardMovement, rightMovement);
+      // // desiredDirection.addVectors(forwardMovement, rightMovement);
+
+      // --- Debug: 一時的にシンプルなワールド座標系での移動に戻す ---
+      desiredDirection.set(leftX, 0, -leftY); 
+      // -------------------------------------------------------
+
       intensity = Math.min(desiredDirection.length(), 1.0); 
       if (intensity > deadZone) { // 再度デッドゾーンチェック（斜め入力考慮）
           desiredDirection.normalize();
