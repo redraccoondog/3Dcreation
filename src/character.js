@@ -319,24 +319,39 @@ class Character {
                 this.moveStuckTimer = 0;
             }
             
-            // 向きを更新
-            if (this.model) {
+            // 向きとアニメーションの更新
+            if (distance > 0.1) { // 十分な距離がある場合のみ向きとアニメーションを更新
+                // 目標方向を計算
+                const newDirection = direction.clone().normalize();
+                
+                // 滑らかに向きを変更
+                this.direction.lerp(newDirection, this.rotationSpeed);
+                this.direction.normalize();
+                
+                // デバッグ用矢印ヘルパーの向きを更新
+                this.arrowHelper.position.copy(this.position);
+                this.arrowHelper.setDirection(this.direction);
+                
                 // モデルの向きを更新
-                const targetAngle = Math.atan2(this.direction.x, this.direction.z);
-                this.model.rotation.y = targetAngle;
-            }
+                if (this.model) {
+                    const targetAngle = Math.atan2(this.direction.x, this.direction.z);
+                    this.model.rotation.y = targetAngle;
+                }
 
-            // --- アニメーション再生ロジックを移動 ---
-            // 移動中は目的地に到着するまで歩行か走行アニメーションを再生
-            const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
-            if (this.currentAnimation !== targetAnimation) {
-                console.log(`タップ移動中: アニメーション切替 ${targetAnimation} (距離: ${distance.toFixed(2)})`);
-                this.playAnimation(targetAnimation);
+                // アニメーション再生
+                // 移動中は目的地に到着するまで歩行か走行アニメーションを再生
+                const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
+                if (this.currentAnimation !== targetAnimation) {
+                    console.log(`タップ移動中: アニメーション切替 ${targetAnimation} (距離: ${distance.toFixed(2)})`);
+                    this.playAnimation(targetAnimation);
+                }
+            } else {
+                // 距離が非常に近い場合は到着処理へ（向きやアニメーションは更新しない）
+                this.isMoving = false; // 到着とみなす
             }
-            // -------------------------------------
             
-            // 移動処理
-            if (distance > this.movementSpeed) {
+            // 移動処理（isMovingがtrueの場合のみ実行）
+            if (this.isMoving && distance > this.movementSpeed) {
                 // 移動方向に進む
                 const moveVector = this.direction.clone().multiplyScalar(this.movementSpeed);
                 this.position.add(moveVector);
@@ -346,8 +361,8 @@ class Character {
                 } else {
                     this.dummyBox.position.copy(this.position);
                 }
-            } else {
-                // 目的地に到着
+            } else if (!this.isMoving || distance <= this.movementSpeed) {
+                // 到着処理 (isMovingがfalseになったか、距離がmovementSpeed以下になった場合)
                 this.position.copy(this.targetPosition);
                 
                 if (this.model) {
