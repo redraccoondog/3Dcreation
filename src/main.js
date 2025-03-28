@@ -250,8 +250,8 @@ function handleKeyboardInput() {
   // WASDキーの入力から基本的な移動ベクトルを計算 (ワールド座標基準)
   let moveX = 0;
   let moveZ = 0;
-  if (keysPressed['KeyW']) { moveZ -= 1; }
-  if (keysPressed['KeyS']) { moveZ += 1; }
+  if (keysPressed['KeyW']) { moveZ += 1; }
+  if (keysPressed['KeyS']) { moveZ -= 1; }
   if (keysPressed['KeyA']) { moveX -= 1; }
   if (keysPressed['KeyD']) { moveX += 1; }
   
