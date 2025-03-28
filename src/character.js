@@ -349,11 +349,10 @@ class Character {
                         this.dummyBox.position.copy(this.position);
                     }
                     
-                    // 移動中は必ず歩行か走行アニメーションを再生
-                    if (distance > 5) {
-                        this.playAnimation(this.ANIMATION_RUN); // 遠い場合は走行
-                    } else {
-                        this.playAnimation(this.ANIMATION_WALK); // 近い場合は歩行
+                    // 移動中は必ず歩行か走行アニメーションを再生（修正箇所）
+                    const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
+                    if (this.currentAnimation !== targetAnimation) {
+                        this.playAnimation(targetAnimation);
                     }
                 } else {
                     // 目的地に到着
