@@ -387,57 +387,25 @@ class Character {
         }
     }
     
-    moveTo(targetPosition) {
-        // 目標位置がY軸で大きく異なる場合は移動しない（無限ループ防止）
-        const heightDifference = Math.abs(targetPosition.y - this.position.y);
-        if (heightDifference > 2.0) {
-            console.log('高さが大きく異なるため移動をキャンセルしました');
-            return false;
+    // 指定された位置に移動を開始
+    moveTo(target) {
+        if (this.position.distanceTo(target) < 0.1) {
+            console.log('目標位置が近すぎるため移動しません');
+            return; // 十分近い場合は移動しない
         }
         
-        // 水面の下をタップした場合は移動しない（Y座標が-0.9より下）
-        if (targetPosition.y < -0.9) {
-            console.log('水面下をタップしたため移動をキャンセルしました');
-            return false;
-        }
+        console.log(`移動開始: 目標地点 = (${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)})`);
         
-        // 目標位置をY軸を現在と同じに設定（平面移動）
-        const adjustedTarget = targetPosition.clone();
-        adjustedTarget.y = this.position.y;
-        
-        // 現在から目標位置までの距離が近すぎる場合は移動しない
-        const distance = this.position.distanceTo(adjustedTarget);
-        if (distance < 0.5) {
-            console.log('目標位置が近すぎるため移動をキャンセルしました');
-            return false;
-        }
-        
-        // 移動先にマーカーを表示
-        this.showTargetMarker(adjustedTarget);
-        
-        // 現在地点を記録して移動開始
-        this.lastPosition.copy(this.position);
-        this.moveStuckTimer = 0;
-        this.totalMovedDistance = 0;
-        this.targetPosition = adjustedTarget;
+        this.targetPosition = target.clone();
         this.isMoving = true;
+        this.moveStuckTimer = 0; // スタックタイマーをリセット
+        this.totalMovedDistance = 0; // 移動距離をリセット
+        this.lastPosition.copy(this.position); // 開始位置を記録
+
+        // マーカーを表示
+        this.showTargetMarker(this.targetPosition);
         
-        console.log(`移動開始: 距離=${distance.toFixed(2)}, モデル=${this.model ? '読み込み済み' : '未読み込み'}`);
-        
-        // 距離に応じて初期アニメーションを設定
-        if (distance > 5) {
-            // 遠距離なら走行アニメーション
-            console.log('走行アニメーション開始');
-            const result = this.playAnimation(this.ANIMATION_RUN);
-            console.log(`アニメーション再生結果: ${result ? '成功' : '失敗'}`);
-        } else {
-            // 近距離なら歩行アニメーション
-            console.log('歩行アニメーション開始');
-            const result = this.playAnimation(this.ANIMATION_WALK);
-            console.log(`アニメーション再生結果: ${result ? '成功' : '失敗'}`);
-        }
-        
-        return true;
+        // updateループでアニメーションは管理するため、ここでは呼ばない
     }
     
     getPosition() {
