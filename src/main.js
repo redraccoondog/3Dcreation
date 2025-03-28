@@ -269,8 +269,8 @@ function handleKeyboardInput() {
     const cameraRight = new THREE.Vector3().crossVectors(cameraDirection, camera.up).normalize();
 
     // キー入力ベクトルをカメラ基準に変換
-    const forwardMovement = cameraDirection.clone().multiplyScalar(moveZ);
-    const rightMovement = cameraRight.clone().multiplyScalar(-moveX);
+    const forwardMovement = cameraDirection.clone().multiplyScalar(-moveZ);
+    const rightMovement = cameraRight.clone().multiplyScalar(moveX);
     desiredDirection.addVectors(forwardMovement, rightMovement).normalize();
 
     // Shiftキーが押されていたら走行強度に
