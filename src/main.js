@@ -174,7 +174,7 @@ gamepadStatusElement.textContent = 'ゲームパッド: 未接続';
 document.body.appendChild(gamepadStatusElement);
 
 // ゲームパッドによる移動処理
-function handleGamepadInput() {
+function handleGamepadInput(deltaTime) {
   const zeroVector = new THREE.Vector3(0, 0, 0);
   let desiredDirection = zeroVector.clone();
   let intensity = 0;
@@ -217,12 +217,62 @@ function handleGamepadInput() {
       }
     }
     
-    // // 右スティックでカメラ回転
-    // const rightX = getRightStickX();
-    // if (Math.abs(rightX) > deadZone) {
-    //   camera.position.x += rightX * 0.05; 
-    //   controls.update();
-    // }
+    // 右スティックでカメラ回転
+    const rightX = getRightStickX();
+    const rightY = getRightStickY();
+    const cameraRotationSpeed = 2.0; // 回転速度の調整
+    
+    if (Math.abs(rightX) > deadZone || Math.abs(rightY) > deadZone) {
+      // キャラクターの位置を取得し、カメラの中心点（ターゲット）として設定
+      const target = character.getPosition();
+      controls.target.copy(target);
+      
+      // 現在のカメラの位置から中心点（キャラクター）への方向ベクトル
+      const directionToTarget = new THREE.Vector3().subVectors(target, camera.position);
+      const distance = directionToTarget.length();
+      
+      // 水平回転（Y軸周り）- 右スティックの左右
+      if (Math.abs(rightX) > deadZone) {
+        const horizontalAngle = rightX * cameraRotationSpeed * deltaTime;
+        const rotationMatrix = new THREE.Matrix4().makeRotationY(-horizontalAngle);
+        
+        // カメラの位置ベクトルを回転
+        const cameraOffset = new THREE.Vector3().subVectors(camera.position, target);
+        cameraOffset.applyMatrix4(rotationMatrix);
+        camera.position.copy(target).add(cameraOffset);
+      }
+      
+      // 垂直回転（X軸周り）- 右スティックの上下
+      if (Math.abs(rightY) > deadZone) {
+        const verticalAngle = rightY * cameraRotationSpeed * deltaTime;
+        
+        // カメラの位置ベクトルを取得
+        const cameraOffset = new THREE.Vector3().subVectors(camera.position, target);
+        
+        // 水平面とのなす角度を計算（制限のため）
+        const currentAngle = Math.atan2(cameraOffset.y, Math.sqrt(cameraOffset.x * cameraOffset.x + cameraOffset.z * cameraOffset.z));
+        const newAngle = currentAngle - verticalAngle;
+        
+        // 角度制限（-85度～85度）
+        const limitedAngle = Math.max(Math.min(newAngle, Math.PI * 0.47), -Math.PI * 0.47);
+        
+        // 極座標から直交座標に変換
+        const radius = cameraOffset.length();
+        const horizontalRadius = radius * Math.cos(limitedAngle);
+        
+        // XZ平面での方向を維持しながら、Y座標を更新
+        const dirXZ = new THREE.Vector2(cameraOffset.x, cameraOffset.z).normalize();
+        cameraOffset.x = dirXZ.x * horizontalRadius;
+        cameraOffset.z = dirXZ.y * horizontalRadius;
+        cameraOffset.y = radius * Math.sin(limitedAngle);
+        
+        camera.position.copy(target).add(cameraOffset);
+      }
+      
+      // カメラの設定を更新
+      camera.lookAt(target);
+      controls.update();
+    }
 
   } else {
     gamepadStatusElement.textContent = 'ゲームパッド: 未接続';
@@ -295,7 +345,7 @@ function animate() {
   // --- 入力処理 (優先度付け) ---
   let gamepadProvidedInput = false;
   if (isGamepadConnected()) {
-      handleGamepadInput();
+      handleGamepadInput(deltaTime);
       // ゲームパッドが有効な移動入力を提供したかチェック
       if (character.moveIntensity > 0 || character.desiredMoveDirection.lengthSq() > 0) {
           gamepadProvidedInput = true;
