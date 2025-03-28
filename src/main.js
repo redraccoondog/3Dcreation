@@ -200,9 +200,9 @@ function handleGamepadInput() {
 
       // スティック入力に基づいて移動方向を計算
       // 前後方向 (スティックY -> カメラ前方/後方)
-      const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
+      const forwardMovement = cameraDirection.clone().multiplyScalar(leftY);
       // 左右方向 (スティックX -> カメラ右方/左方)
-      const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
+      const rightMovement = cameraRight.clone().multiplyScalar(-leftX);
 
       desiredDirection.addVectors(forwardMovement, rightMovement);
 
@@ -269,8 +269,8 @@ function handleKeyboardInput() {
     const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
 
     // キー入力ベクトルをカメラ基準に変換
-    const forwardMovement = cameraDirection.clone().multiplyScalar(moveZ);
-    const rightMovement = cameraRight.clone().multiplyScalar(moveX);
+    const forwardMovement = cameraDirection.clone().multiplyScalar(-moveZ);
+    const rightMovement = cameraRight.clone().multiplyScalar(-moveX);
     desiredDirection.addVectors(forwardMovement, rightMovement).normalize();
 
     // Shiftキーが押されていたら走行強度に
