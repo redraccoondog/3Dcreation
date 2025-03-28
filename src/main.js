@@ -183,38 +183,28 @@ function handleGamepadInput() {
     gamepadStatusElement.textContent = 'ゲームパッド: 接続中';
     gamepadStatusElement.style.background = 'rgba(0, 128, 0, 0.5)';
     
-    // // 左スティックの入力を取得
-    // const leftX = getLeftStickX();
-    // const leftY = getLeftStickY();
+    // 左スティックの入力を取得
+    const leftX = getLeftStickX();
+    const leftY = getLeftStickY();
 
-    // --- Debug: Use RIGHT stick input for LEFT stick logic ---
-    console.log("デバッグ: 右スティックを左スティック入力として使用");
-    const leftX = getRightStickX(); // 右スティックのX軸を使用
-    const leftY = getRightStickY(); // 右スティックのY軸を使用 (※符号注意)
-    // -------------------------------------------------------
-    
     const deadZone = 0.1;
     if (Math.abs(leftX) > deadZone || Math.abs(leftY) > deadZone) {
-      // // カメラの方向を取得 (XZ平面)
-      // const cameraDirection = new THREE.Vector3();
-      // camera.getWorldDirection(cameraDirection);
-      // cameraDirection.y = 0;
-      // cameraDirection.normalize();
-      // 
-      // // カメラの右方向を計算
-      // const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(); // Note: camera.up should be (0,1,0)
+      // カメラの方向を取得 (XZ平面)
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      cameraDirection.y = 0;
+      cameraDirection.normalize();
+      
+      // カメラの右方向を計算
+      const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(); // Note: camera.up should be (0,1,0)
 
-      // // スティック入力に基づいて移動方向を計算
-      // // 前後方向 (スティックY -> カメラ前方/後方)
-      // const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
-      // // 左右方向 (スティックX -> カメラ右方/左方)
-      // const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
+      // スティック入力に基づいて移動方向を計算
+      // 前後方向 (スティックY -> カメラ前方/後方)
+      const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
+      // 左右方向 (スティックX -> カメラ右方/左方)
+      const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
 
-      // // desiredDirection.addVectors(forwardMovement, rightMovement);
-
-      // --- Debug: 一時的にシンプルなワールド座標系での移動に戻す ---
-      desiredDirection.set(leftX, 0, -leftY); 
-      // -------------------------------------------------------
+      desiredDirection.addVectors(forwardMovement, rightMovement);
 
       intensity = Math.min(desiredDirection.length(), 1.0); 
       if (intensity > deadZone) { // 再度デッドゾーンチェック（斜め入力考慮）
@@ -302,13 +292,22 @@ function animate() {
   
   const deltaTime = clock.getDelta();
   
-  // ゲームパッド入力の処理
-  handleGamepadInput();
+  // --- 入力処理 (優先度付け) ---
+  let gamepadProvidedInput = false;
+  if (isGamepadConnected()) {
+      handleGamepadInput();
+      // ゲームパッドが有効な移動入力を提供したかチェック
+      if (character.moveIntensity > 0 || character.desiredMoveDirection.lengthSq() > 0) {
+          gamepadProvidedInput = true;
+      }
+  }
   
-  // キーボード入力の処理
-  handleKeyboardInput();
+  // ゲームパッドが入力を行わなかった場合のみキーボード入力を処理
+  if (!gamepadProvidedInput) {
+      handleKeyboardInput();
+  }
   
-  // キャラクターの更新（アニメーションミキサーなどの更新）
+  // --- キャラクター更新 (全てのロジックはここに含まれる) ---
   character.update(deltaTime);
   
   // カメラをキャラクターに追従
