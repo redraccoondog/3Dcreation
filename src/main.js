@@ -200,7 +200,7 @@ function handleGamepadInput() {
 
       // スティック入力に基づいて移動方向を計算
       // 前後方向 (スティックY -> カメラ前方/後方)
-      const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY);
+      const forwardMovement = cameraDirection.clone().multiplyScalar(leftY);
       // 左右方向 (スティックX -> カメラ右方/左方)
       const rightMovement = cameraRight.clone().multiplyScalar(leftX);
 
@@ -217,12 +217,12 @@ function handleGamepadInput() {
       }
     }
     
-    // 右スティックでカメラ回転
-    const rightX = getRightStickX();
-    if (Math.abs(rightX) > deadZone) {
-      camera.position.x += rightX * 0.05; 
-      controls.update();
-    }
+    // // 右スティックでカメラ回転
+    // const rightX = getRightStickX();
+    // if (Math.abs(rightX) > deadZone) {
+    //   camera.position.x += rightX * 0.05; 
+    //   controls.update();
+    // }
 
   } else {
     gamepadStatusElement.textContent = 'ゲームパッド: 未接続';
@@ -270,7 +270,7 @@ function handleKeyboardInput() {
 
     // キー入力ベクトルをカメラ基準に変換
     const forwardMovement = cameraDirection.clone().multiplyScalar(moveZ);
-    const rightMovement = cameraRight.clone().multiplyScalar(moveX);
+    const rightMovement = cameraRight.clone().multiplyScalar(-moveX);
     desiredDirection.addVectors(forwardMovement, rightMovement).normalize();
 
     // Shiftキーが押されていたら走行強度に
