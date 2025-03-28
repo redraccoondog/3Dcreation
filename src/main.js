@@ -189,16 +189,31 @@ function handleGamepadInput() {
     
     const deadZone = 0.1;
     if (Math.abs(leftX) > deadZone || Math.abs(leftY) > deadZone) {
-      // スティック入力があれば移動方向と強度を設定
-      desiredDirection.set(leftX, 0, -leftY); // Y-up to Z-forward
-      intensity = Math.min(desiredDirection.length(), 1.0); // 強度を0-1に正規化
-      desiredDirection.normalize();
+      // カメラの方向を取得 (XZ平面)
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      cameraDirection.y = 0;
+      cameraDirection.normalize();
+      
+      // カメラの右方向を計算
+      const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize(); // Note: camera.up should be (0,1,0)
 
-      // 強度が一定以上なら走行用に強度を増幅（character.js側で処理）
-      // if (intensity > 0.7) { intensity = 1.5; } // この判定は Character側へ移動
-       // 強度を1以上に設定して走行判定させる
-       if (intensity > 0.7) { intensity = 1.1; }
+      // スティック入力に基づいて移動方向を計算
+      // 前後方向 (スティックY -> カメラ前方/後方)
+      const forwardMovement = cameraDirection.clone().multiplyScalar(-leftY); // スティック上(-Y)でカメラ前方
+      // 左右方向 (スティックX -> カメラ右方/左方)
+      const rightMovement = cameraRight.clone().multiplyScalar(leftX); 
 
+      desiredDirection.addVectors(forwardMovement, rightMovement);
+      intensity = Math.min(desiredDirection.length(), 1.0); 
+      if (intensity > deadZone) { // 再度デッドゾーンチェック（斜め入力考慮）
+          desiredDirection.normalize();
+          // 強度が0.7を超えたら走行判定用に強度を少し上げる
+          if (intensity > 0.7) { intensity = 1.1; }
+      } else {
+          intensity = 0; // デッドゾーン内なら停止
+          desiredDirection.set(0,0,0);
+      }
     }
     
     // 右スティックでカメラ回転
@@ -213,7 +228,7 @@ function handleGamepadInput() {
     gamepadStatusElement.style.background = 'rgba(0, 0, 0, 0.5)';
   }
 
-  // キャラクターに目標移動を設定 (入力がない場合はゼロベクトルと強度0が渡される)
+  // キャラクターに目標移動を設定
   character.setDesiredMovement(desiredDirection, intensity);
 }
 
@@ -231,24 +246,39 @@ function handleKeyboardInput() {
   let desiredDirection = zeroVector.clone();
   let intensity = 0;
 
-  // WASDキーの入力を取得
-  if (keysPressed['KeyW']) { desiredDirection.z -= 1; }
-  if (keysPressed['KeyS']) { desiredDirection.z += 1; }
-  if (keysPressed['KeyA']) { desiredDirection.x -= 1; }
-  if (keysPressed['KeyD']) { desiredDirection.x += 1; }
+  // WASDキーの入力から基本的な移動ベクトルを計算 (ワールド座標基準)
+  let moveX = 0;
+  let moveZ = 0;
+  if (keysPressed['KeyW']) { moveZ -= 1; }
+  if (keysPressed['KeyS']) { moveZ += 1; }
+  if (keysPressed['KeyA']) { moveX -= 1; }
+  if (keysPressed['KeyD']) { moveX += 1; }
   
-  // 方向入力があれば強度と方向を設定
-  if (desiredDirection.lengthSq() > 0) {
-    intensity = 1.0; // 基本は歩行強度
-    desiredDirection.normalize();
+  // 方向入力があれば、カメラ基準の方向に変換
+  if (moveX !== 0 || moveZ !== 0) {
+    intensity = 1.0; // 基本強度
+
+    // カメラの方向を取得 (XZ平面)
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+    cameraDirection.y = 0;
+    cameraDirection.normalize();
     
+    // カメラの右方向を計算
+    const cameraRight = new THREE.Vector3().crossVectors(camera.up, cameraDirection).normalize();
+
+    // キー入力ベクトルをカメラ基準に変換
+    const forwardMovement = cameraDirection.clone().multiplyScalar(moveZ);
+    const rightMovement = cameraRight.clone().multiplyScalar(moveX);
+    desiredDirection.addVectors(forwardMovement, rightMovement).normalize();
+
     // Shiftキーが押されていたら走行強度に
     if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
-      intensity = 1.5; // 走行強度 (Character側で > 1.0 で判定)
+      intensity = 1.5; 
     }
   }
 
-  // キャラクターに目標移動を設定 (入力がない場合はゼロベクトルと強度0)
+  // キャラクターに目標移動を設定
   character.setDesiredMovement(desiredDirection, intensity);
 }
 
