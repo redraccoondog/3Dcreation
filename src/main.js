@@ -175,6 +175,10 @@ document.body.appendChild(gamepadStatusElement);
 
 // ゲームパッドによる移動処理
 function handleGamepadInput() {
+  const zeroVector = new THREE.Vector3(0, 0, 0);
+  let desiredDirection = zeroVector.clone();
+  let intensity = 0;
+
   if (isGamepadConnected()) {
     gamepadStatusElement.textContent = 'ゲームパッド: 接続中';
     gamepadStatusElement.style.background = 'rgba(0, 128, 0, 0.5)';
@@ -183,42 +187,34 @@ function handleGamepadInput() {
     const leftX = getLeftStickX();
     const leftY = getLeftStickY();
     
-    if (Math.abs(leftX) > 0.1 || Math.abs(leftY) > 0.1) {  // デッドゾーンを設定（0.1）
-      // スティック入力があれば移動方向を設定
-      const direction = new THREE.Vector3(leftX, 0, -leftY);
-      
-      // スティックの入力強度を計算（0.0～1.0の範囲）
-      const inputStrength = direction.length();
-      
-      // 強度が一定以上なら走行用に強度を増幅
-      if (inputStrength > 0.7) {
-        // 方向は保持したまま強度を1.0以上に設定して走行を促進
-        direction.normalize().multiplyScalar(1.2);
-      }
-      
-      // 移動と同時にアニメーション更新
-      const isMoved = character.moveInDirection(direction);
-      
-      // 移動が発生した場合のログ出力（デバッグ用）
-      if (isMoved) {
-        console.log('スティック入力による移動: 強さ=' + inputStrength.toFixed(2) + 
-                    ', アニメーション=' + (inputStrength > 0.7 ? 'Run' : 'Walk'));
-      }
-    } else {
-      // 入力がない場合は空のベクトルを渡して、アイドル状態にする
-      character.moveInDirection(new THREE.Vector3(0, 0, 0));
+    const deadZone = 0.1;
+    if (Math.abs(leftX) > deadZone || Math.abs(leftY) > deadZone) {
+      // スティック入力があれば移動方向と強度を設定
+      desiredDirection.set(leftX, 0, -leftY); // Y-up to Z-forward
+      intensity = Math.min(desiredDirection.length(), 1.0); // 強度を0-1に正規化
+      desiredDirection.normalize();
+
+      // 強度が一定以上なら走行用に強度を増幅（character.js側で処理）
+      // if (intensity > 0.7) { intensity = 1.5; } // この判定は Character側へ移動
+       // 強度を1以上に設定して走行判定させる
+       if (intensity > 0.7) { intensity = 1.1; }
+
     }
     
     // 右スティックでカメラ回転
     const rightX = getRightStickX();
-    if (Math.abs(rightX) > 0.1) {  // デッドゾーンを設定（0.1）
-      camera.position.x += rightX * 0.05;
+    if (Math.abs(rightX) > deadZone) {
+      camera.position.x += rightX * 0.05; 
       controls.update();
     }
+
   } else {
     gamepadStatusElement.textContent = 'ゲームパッド: 未接続';
     gamepadStatusElement.style.background = 'rgba(0, 0, 0, 0.5)';
   }
+
+  // キャラクターに目標移動を設定 (入力がない場合はゼロベクトルと強度0が渡される)
+  character.setDesiredMovement(desiredDirection, intensity);
 }
 
 // キーボード入力による移動
@@ -231,44 +227,29 @@ document.addEventListener('keyup', (event) => {
 });
 
 function handleKeyboardInput() {
+  const zeroVector = new THREE.Vector3(0, 0, 0);
+  let desiredDirection = zeroVector.clone();
+  let intensity = 0;
+
   // WASDキーの入力を取得
-  const direction = new THREE.Vector3(0, 0, 0);
+  if (keysPressed['KeyW']) { desiredDirection.z -= 1; }
+  if (keysPressed['KeyS']) { desiredDirection.z += 1; }
+  if (keysPressed['KeyA']) { desiredDirection.x -= 1; }
+  if (keysPressed['KeyD']) { desiredDirection.x += 1; }
   
-  if (keysPressed['KeyW']) {
-    direction.z -= 1;
-  }
-  if (keysPressed['KeyS']) {
-    direction.z += 1;
-  }
-  if (keysPressed['KeyA']) {
-    direction.x -= 1;
-  }
-  if (keysPressed['KeyD']) {
-    direction.x += 1;
-  }
-  
-  // 方向入力があれば移動
-  if (direction.length() > 0) {
-    // 方向を正規化
-    direction.normalize();
+  // 方向入力があれば強度と方向を設定
+  if (desiredDirection.lengthSq() > 0) {
+    intensity = 1.0; // 基本は歩行強度
+    desiredDirection.normalize();
     
-    // Shiftキーが押されていたら走る（ベクトルの長さを増やして速度アップ）
+    // Shiftキーが押されていたら走行強度に
     if (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) {
-      direction.multiplyScalar(1.5);  // 1.5倍の速度（これにより閾値0.7を超え、走行アニメーションが再生される）
+      intensity = 1.5; // 走行強度 (Character側で > 1.0 で判定)
     }
-    
-    // 移動と同時にアニメーション更新
-    const isMoved = character.moveInDirection(direction);
-    
-    // 移動が発生した場合のログ出力（デバッグ用）
-    if (isMoved) {
-      console.log('キーボード入力による移動: ', 
-                  (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) ? '走行' : '歩行');
-    }
-  } else {
-    // 入力がない場合は空のベクトルを渡して、アイドル状態にする
-    character.moveInDirection(new THREE.Vector3(0, 0, 0));
   }
+
+  // キャラクターに目標移動を設定 (入力がない場合はゼロベクトルと強度0)
+  character.setDesiredMovement(desiredDirection, intensity);
 }
 
 // 時間管理

@@ -9,28 +9,33 @@ class Character {
         this.mixer = null;
         this.animations = {};
         this.currentAnimation = null;
-        this.direction = new THREE.Vector3(0, 0, 1); // 初期方向: z軸正方向
-        this.movementSpeed = 0.1;
-        this.rotationSpeed = 0.1;
-        this.isMoving = false;
-        this.targetPosition = null;
-        this.animationMap = {
-            idle: ['idle', 'stand', 'animation_0', 'Survey'],
-            walk: ['walk', 'run', 'animation_1', 'Walk', 'Run']
-        };
-        this.moveStuckTimer = 0; // 同じ場所で動き続ける時間を計測
+        
+        // --- 状態変数 ---
+        this.direction = new THREE.Vector3(0, 0, 1); // 現在のキャラクターの向き
+        this.movementSpeed = 0.1; // 基本移動速度
+        this.rotationSpeed = 0.1; // 回転速度
+        
+        // タップ移動用
+        this.targetPosition = null; // 目標地点
+        
+        // 方向入力 (キーボード/ゲームパッド) 用
+        this.desiredMoveDirection = new THREE.Vector3(0, 0, 0); // 入力に基づく目標移動方向
+        this.moveIntensity = 0; // 入力強度 (0:停止, 1:歩行相当, >1:走行相当)
+        
+        // アニメーション名定数
+        this.ANIMATION_IDLE = "Survey";
+        this.ANIMATION_WALK = "Walk";
+        this.ANIMATION_RUN = "Run";
+        
+        // --- 内部状態/デバッグ用 ---
+        this.moveStuckTimer = 0;
         this.lastPosition = new THREE.Vector3().copy(position);
-        this.totalMovedDistance = 0; // 累計移動距離
-        this.maxMoveDistance = 30; // 最大移動距離制限
+        this.totalMovedDistance = 0;
+        this.maxMoveDistance = 30;
         
         // 位置情報表示用の矢印（デバッグ用）
         const arrowHelper = new THREE.ArrowHelper(
-            this.direction,
-            this.position,
-            2,
-            0x00ff00,
-            0.5,
-            0.3
+            this.direction, this.position, 2, 0x00ff00, 0.5, 0.3
         );
         this.arrowHelper = arrowHelper;
         scene.add(arrowHelper);
@@ -222,186 +227,139 @@ class Character {
         return true;
     }
     
-    moveInDirection(direction) {
-        // 入力方向に合わせて向きを更新
-        if (direction.length() > 0) {
-            // 新しい向きを設定
-            const newDirection = direction.clone().normalize();
-            
-            // 滑らかに向きを変更
-            this.direction.lerp(newDirection, this.rotationSpeed);
-            this.direction.normalize();
-            
-            // 方向を更新
-            this.arrowHelper.position.copy(this.position);
-            this.arrowHelper.setDirection(this.direction);
-            
-            if (this.model) {
-                // モデルの向きを更新
-                const targetAngle = Math.atan2(this.direction.x, this.direction.z);
-                this.model.rotation.y = targetAngle;
-            }
-            
-            // 移動する
-            const moveVector = this.direction.clone().multiplyScalar(this.movementSpeed);
-            this.position.add(moveVector);
-            
-            if (this.model) {
-                this.model.position.copy(this.position);
-            } else {
-                this.dummyBox.position.copy(this.position);
-            }
-            
-            // 入力の強さによってアニメーションを選択
-            if (direction.length() > 0.7) {
-                this.playAnimation(this.ANIMATION_RUN);
-            } else {
-                this.playAnimation(this.ANIMATION_WALK);
-            }
-            
-            return true;
-        } else {
-            // 入力がない場合はアイドル状態に
-            this.playAnimation(this.ANIMATION_IDLE);
-            
-            return false;
+    // キーボード/ゲームパッドからの入力設定
+    setDesiredMovement(direction, intensity) {
+        this.desiredMoveDirection.copy(direction);
+        this.moveIntensity = intensity;
+        // 方向入力がある場合、タップ移動はキャンセル
+        if (direction.lengthSq() > 0) {
+             this.targetPosition = null;
         }
     }
     
-    update(deltaTime) {
-        // アニメーションの更新
-        if (this.mixer) {
-            this.mixer.update(deltaTime);
-        }
-        
-        // マーカーの更新
-        this.updateMarker(deltaTime);
-        
-        // タップした位置への移動処理
-        if (this.isMoving && this.targetPosition) {
-            const direction = new THREE.Vector3().subVectors(this.targetPosition, this.position);
-            const distance = direction.length();
-            
-            // 移動の進捗を確認（無限移動検出）
-            const movementDistance = this.position.distanceTo(this.lastPosition);
-            if (movementDistance < 0.01) {
-                // ほとんど動いていない場合、スタック時間を増加
-                this.moveStuckTimer += deltaTime;
-                // 2秒以上動かない場合、移動を中止
-                if (this.moveStuckTimer > 2) {
-                    console.log('移動が進まないため中止します');
-                    this.isMoving = false;
-                    this.targetPosition = null;
-                    this.moveStuckTimer = 0;
-                    this.totalMovedDistance = 0;
-                    // アイドルアニメーションに切り替え
-                    this.playAnimation(this.ANIMATION_IDLE);
-                    return;
-                }
-            } else {
-                // 動いている場合は累計移動距離を加算
-                this.totalMovedDistance += movementDistance;
-                
-                // 最大移動距離を超えた場合も中止
-                if (this.totalMovedDistance > this.maxMoveDistance) {
-                    console.log('移動距離が制限を超えたため中止します');
-                    this.isMoving = false;
-                    this.targetPosition = null;
-                    this.moveStuckTimer = 0;
-                    this.totalMovedDistance = 0;
-                    // アイドルアニメーションに切り替え
-                    this.playAnimation(this.ANIMATION_IDLE);
-                    return;
-                }
-                
-                // 位置を更新
-                this.lastPosition.copy(this.position);
-                this.moveStuckTimer = 0;
-            }
-            
-            // 向きとアニメーションの更新
-            if (distance > 0.1) { // 十分な距離がある場合のみ向きとアニメーションを更新
-                // 目標方向を計算
-                const newDirection = direction.clone().normalize();
-                
-                // 滑らかに向きを変更
-                this.direction.lerp(newDirection, this.rotationSpeed);
-                this.direction.normalize();
-                
-                // デバッグ用矢印ヘルパーの向きを更新
-                this.arrowHelper.position.copy(this.position);
-                this.arrowHelper.setDirection(this.direction);
-                
-                // モデルの向きを更新
-                if (this.model) {
-                    const targetAngle = Math.atan2(this.direction.x, this.direction.z);
-                    this.model.rotation.y = targetAngle;
-                }
-
-                // アニメーション再生
-                // 移動中は目的地に到着するまで歩行か走行アニメーションを再生
-                const targetAnimation = distance > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK;
-                if (this.currentAnimation !== targetAnimation) {
-                    console.log(`タップ移動中: アニメーション切替 ${targetAnimation} (距離: ${distance.toFixed(2)})`);
-                    this.playAnimation(targetAnimation);
-                }
-            } else {
-                // 距離が非常に近い場合は到着処理へ（向きやアニメーションは更新しない）
-                this.isMoving = false; // 到着とみなす
-            }
-            
-            // 移動処理（isMovingがtrueの場合のみ実行）
-            if (this.isMoving && distance > this.movementSpeed) {
-                // 移動方向に進む
-                const moveVector = this.direction.clone().multiplyScalar(this.movementSpeed);
-                this.position.add(moveVector);
-                
-                if (this.model) {
-                    this.model.position.copy(this.position);
-                } else {
-                    this.dummyBox.position.copy(this.position);
-                }
-            } else if (!this.isMoving || distance <= this.movementSpeed) {
-                // 到着処理 (isMovingがfalseになったか、距離がmovementSpeed以下になった場合)
-                this.position.copy(this.targetPosition);
-                
-                if (this.model) {
-                    this.model.position.copy(this.position);
-                } else {
-                    this.dummyBox.position.copy(this.position);
-                }
-                
-                this.isMoving = false;
-                this.targetPosition = null;
-                this.moveStuckTimer = 0;
-                this.totalMovedDistance = 0;
-                
-                // アイドルアニメーション
-                console.log('目的地到着: アイドルアニメーションに切替');
-                this.playAnimation(this.ANIMATION_IDLE);
-            }
-        }
-    }
-    
-    // 指定された位置に移動を開始
+    // タップによる移動目標設定
     moveTo(target) {
         if (this.position.distanceTo(target) < 0.1) {
             console.log('目標位置が近すぎるため移動しません');
-            return; // 十分近い場合は移動しない
+            return;
+        }
+        console.log(`タップ移動開始: 目標地点 = (${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)})`);
+        this.targetPosition = target.clone();
+        this.desiredMoveDirection.set(0, 0, 0); // 他の入力をリセット
+        this.moveIntensity = 0;
+        this.moveStuckTimer = 0;
+        this.totalMovedDistance = 0;
+        this.lastPosition.copy(this.position);
+        this.showTargetMarker(this.targetPosition);
+    }
+    
+    update(deltaTime) {
+        if (this.mixer) {
+            this.mixer.update(deltaTime);
+        }
+        this.updateMarker(deltaTime);
+
+        let isMoving = false;
+        let targetAnimation = this.ANIMATION_IDLE;
+        let moveVector = new THREE.Vector3(0, 0, 0);
+        let actualMovementSpeed = this.movementSpeed;
+
+        // 1. タップ移動の処理
+        if (this.targetPosition) {
+            const directionToTarget = new THREE.Vector3().subVectors(this.targetPosition, this.position);
+            const distanceToTarget = directionToTarget.length();
+
+            if (distanceToTarget > 0.1) {
+                isMoving = true;
+                const moveDirection = directionToTarget.normalize();
+                
+                // 向きを更新 (Lerp)
+                this.direction.lerp(moveDirection, this.rotationSpeed).normalize();
+                
+                // 移動ベクトルを計算
+                actualMovementSpeed = this.movementSpeed; // タップ移動は一定速度
+                moveVector = this.direction.clone().multiplyScalar(Math.min(actualMovementSpeed, distanceToTarget)); // 目的地を超えないように
+
+                // アニメーション決定 (距離ではなく一定速度で Walk/Run を決める方が良いかも？一旦距離で)
+                targetAnimation = distanceToTarget > 5 ? this.ANIMATION_RUN : this.ANIMATION_WALK; // TODO: 閾値調整
+
+                // スタック検出 (既存ロジックを流用)
+                const movementDistance = this.position.distanceTo(this.lastPosition);
+                 if (movementDistance < 0.01 && deltaTime > 0) { // Avoid division by zero or tiny delta issues
+                     this.moveStuckTimer += deltaTime;
+                     if (this.moveStuckTimer > 2) {
+                         console.log('タップ移動が進まないため中止します');
+                         this.targetPosition = null; // Stop movement
+                         isMoving = false;
+                         targetAnimation = this.ANIMATION_IDLE;
+                     }
+                 } else {
+                     this.totalMovedDistance += movementDistance;
+                     if (this.totalMovedDistance > this.maxMoveDistance) {
+                         console.log('タップ移動距離が制限を超えたため中止します');
+                         this.targetPosition = null; // Stop movement
+                         isMoving = false;
+                         targetAnimation = this.ANIMATION_IDLE;
+                     }
+                     this.lastPosition.copy(this.position);
+                     this.moveStuckTimer = 0;
+                 }
+
+
+            } else {
+                // 到着
+                this.position.copy(this.targetPosition); // 最終位置を正確に設定
+                this.targetPosition = null;
+                isMoving = false;
+                targetAnimation = this.ANIMATION_IDLE;
+                console.log('目的地到着 (タップ)');
+            }
+        } 
+        // 2. 方向入力 (キーボード/ゲームパッド) の処理
+        else if (this.moveIntensity > 0 && this.desiredMoveDirection.lengthSq() > 0) {
+            isMoving = true;
+            
+            // 向きを更新 (Lerp)
+            this.direction.lerp(this.desiredMoveDirection, this.rotationSpeed).normalize();
+            
+            // 移動ベクトルを計算 (強度に応じて速度変更も可能)
+            // 例: 走行判定 (強度が1以上など)
+            const isRunning = this.moveIntensity > 1.0; 
+            actualMovementSpeed = isRunning ? this.movementSpeed * 1.5 : this.movementSpeed; // 走行時は速度アップ
+            moveVector = this.direction.clone().multiplyScalar(actualMovementSpeed);
+
+            // アニメーション決定
+            targetAnimation = isRunning ? this.ANIMATION_RUN : this.ANIMATION_WALK;
+        }
+
+        // 3. 移動の実行
+        if (isMoving) {
+            this.position.add(moveVector);
+        }
+
+        // 4. モデルの位置と向きを更新
+        if (this.model) {
+            this.model.position.copy(this.position);
+            // モデルのY軸回転を設定 (向きベクトルから角度計算)
+            const targetAngle = Math.atan2(this.direction.x, this.direction.z);
+            this.model.rotation.y = targetAngle; 
+        } else {
+            // ダミーボックスも更新
+             this.dummyBox.position.copy(this.position);
         }
         
-        console.log(`移動開始: 目標地点 = (${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)})`);
-        
-        this.targetPosition = target.clone();
-        this.isMoving = true;
-        this.moveStuckTimer = 0; // スタックタイマーをリセット
-        this.totalMovedDistance = 0; // 移動距離をリセット
-        this.lastPosition.copy(this.position); // 開始位置を記録
+        // デバッグ用矢印ヘルパーの更新
+        this.arrowHelper.position.copy(this.position);
+        this.arrowHelper.setDirection(this.direction);
 
-        // マーカーを表示
-        this.showTargetMarker(this.targetPosition);
+        // 5. アニメーションの再生
+        this.playAnimation(targetAnimation);
         
-        // updateループでアニメーションは管理するため、ここでは呼ばない
+        // lastPosition の更新を移動後に行う (スタック検出用)
+        // Note: タップ移動の場合、スタック検出は移動判定ブロック内で行う方が良いかも
+        // if (!this.targetPosition) { // Only update lastPosition if not tap-moving?
+        //     this.lastPosition.copy(this.position);
+        // }
     }
     
     getPosition() {
