@@ -124,17 +124,23 @@ class Character {
     
     loadModel() {
         const loader = new GLTFLoader();
+        console.log('モデル読み込み開始: assets/characters/animals/tiger_001.glb');
         
         // Tigerモデルをロード
-        loader.load('assets/characters/animals/tiger_001.glb', (gltf) => {
+        loader.load('assets/characters/animals/tiger_001.glb', 
+        (gltf) => {
+            console.log('>>> モデル読み込み成功!');
             this.model = gltf.scene;
+            console.log('>>> モデルオブジェクト:', this.model);
             
             // モデルのスケールを調整（一旦等倍で読み込む）
             this.model.scale.set(1, 1, 1); 
+            console.log('>>> スケール設定完了');
             
             // モデルの向きは元のままにする（-Z方向が前方）
             
             this.model.position.copy(this.position);
+            console.log('>>> 位置設定完了', this.position);
             
             // モデルとその子要素にシャドウを設定
             this.model.traverse((child) => {
@@ -143,25 +149,39 @@ class Character {
                     child.receiveShadow = true;
                 }
             });
+            console.log('>>> シャドウ設定完了');
             
-            this.scene.add(this.model);
+            try {
+                this.scene.add(this.model);
+                console.log('>>> モデルをシーンに追加完了');
+            } catch (e) {
+                console.error('>>> モデルのシーン追加エラー:', e);
+            }
             
             // ダミーボックスを削除
             if(this.dummyBox && this.dummyBox.parent) {
-                this.scene.remove(this.dummyBox);
+                 try {
+                    this.scene.remove(this.dummyBox);
+                    console.log('>>> ダミーボックス削除完了');
+                } catch (e) {
+                    console.error('>>> ダミーボックス削除エラー:', e);
+                }
+            } else {
+                 console.log('>>> ダミーボックスが見つからないか、既に削除されています');
             }
             
             // アニメーションを設定
             this.mixer = new THREE.AnimationMixer(this.model);
             this.animations = {}; // アニメーションマップを初期化
+            console.log('>>> AnimationMixer 初期化完了');
             
             if (gltf.animations && gltf.animations.length > 0) {
-                console.log(`読み込まれたアニメーション: ${gltf.animations.length}個`);
+                console.log(`>>> 読み込まれたアニメーション: ${gltf.animations.length}個`);
                 
                 // アニメーションクリップをコピーして使用する
                 gltf.animations.forEach((clip, index) => {
                     // クリップの情報をログ表示
-                    console.log(`アニメーション[${index}]: ${clip.name}, 長さ: ${clip.duration.toFixed(2)}秒`);
+                    console.log(`>>> アニメーション[${index}]: ${clip.name}, 長さ: ${clip.duration.toFixed(2)}秒`);
                     
                     // アニメーションアクションを作成
                     const action = this.mixer.clipAction(clip);
@@ -174,6 +194,7 @@ class Character {
                     // アクションを保存
                     this.animations[clip.name] = action;
                 });
+                console.log('>>> アニメーションアクション保存完了');
                 
                 // --- アニメーション名のマッピング (モデルに合わせて調整が必要！) ---
                 // console.log("モデルのアニメーション名を確認し、以下を調整してください:");
@@ -194,28 +215,34 @@ class Character {
                 
                 // モデル読み込み直後のアニメーション準備
                 setTimeout(() => {
-                    console.log('モデル読み込み完了: アニメーション初期化試行');
+                    console.log('>>> モデル読み込み完了: アニメーション初期化試行');
                     this.currentAnimation = null;
                     // アイドルアニメーション名が確定したら以下を有効化
                     // this.playAnimation(this.ANIMATION_IDLE);
                     
                     // 暫定: 最初のアニメーションを再生してみる
                     if(gltf.animations.length > 0 && this.animations[gltf.animations[0].name]) {
-                         console.log(`暫定的に最初のアニメーション ${gltf.animations[0].name} を再生します`);
-                         this.playAnimation(gltf.animations[0].name);
+                         const firstAnimName = gltf.animations[0].name;
+                         console.log(`>>> 暫定的に最初のアニメーション ${firstAnimName} を再生します`);
+                         try {
+                             this.playAnimation(firstAnimName);
+                             console.log(`>>> ${firstAnimName} 再生開始`);
+                         } catch (e) {
+                             console.error(`>>> ${firstAnimName} の再生エラー:`, e);
+                         }
                     }
                 }, 100);
             } else {
-                console.warn('モデルにアニメーションが含まれていません！');
+                console.warn('>>> モデルにアニメーションが含まれていません！');
             }
         }, 
         // 読み込み進捗状況
         (xhr) => {
-            // console.log(`モデル読み込み進捗: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`); // ログが多いので一旦コメントアウト
+            // 進捗ログは一旦省略
         },
         // エラー処理
         (error) => {
-            console.error('モデル読み込みエラー:', error);
+            console.error('>>> モデル読み込みエラー発生!', error);
         });
     }
     
