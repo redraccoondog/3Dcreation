@@ -125,25 +125,35 @@ class Character {
     loadModel() {
         const loader = new GLTFLoader();
         
-        // Foxモデルをロード
-        loader.load('assets/characters/fox/Fox.glb', (gltf) => {
+        // Tigerモデルをロード
+        loader.load('assets/characters/animals/tiger_001.glb', (gltf) => {
             this.model = gltf.scene;
             
-            // モデルのスケールを調整（キツネは小さいので大きくする）
-            this.model.scale.set(0.05, 0.05, 0.05);
+            // モデルのスケールを調整（一旦等倍で読み込む）
+            this.model.scale.set(1, 1, 1); 
             
             // モデルの向きは元のままにする（-Z方向が前方）
             
             this.model.position.copy(this.position);
-            this.model.castShadow = true;
-            this.model.receiveShadow = true;
+            
+            // モデルとその子要素にシャドウを設定
+            this.model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
             this.scene.add(this.model);
             
             // ダミーボックスを削除
-            this.scene.remove(this.dummyBox);
+            if(this.dummyBox && this.dummyBox.parent) {
+                this.scene.remove(this.dummyBox);
+            }
             
             // アニメーションを設定
             this.mixer = new THREE.AnimationMixer(this.model);
+            this.animations = {}; // アニメーションマップを初期化
             
             if (gltf.animations && gltf.animations.length > 0) {
                 console.log(`読み込まれたアニメーション: ${gltf.animations.length}個`);
@@ -165,21 +175,35 @@ class Character {
                     this.animations[clip.name] = action;
                 });
                 
-                // モデルに合わせてアニメーションを割り当て
-                this.ANIMATION_IDLE = "Survey";  // アイドル
-                this.ANIMATION_WALK = "Walk";    // 歩行
-                this.ANIMATION_RUN = "Run";      // 走行
+                // --- アニメーション名のマッピング (モデルに合わせて調整が必要！) ---
+                // console.log("モデルのアニメーション名を確認し、以下を調整してください:");
+                // this.ANIMATION_IDLE = "???";  // 例: "Idle" や "Survey" など
+                // this.ANIMATION_WALK = "???";  // 例: "Walk" や "Run" など
+                // this.ANIMATION_RUN = "???";   // 例: "Run" や "Sprint" など
                 
-                console.log("使用するアニメーション:");
-                console.log(`- アイドル: ${this.ANIMATION_IDLE}`);
-                console.log(`- 歩行: ${this.ANIMATION_WALK}`);
-                console.log(`- 走行: ${this.ANIMATION_RUN}`);
+                // // 暫定: 最初のアニメーションをIdleとして使う
+                // const firstAnimName = gltf.animations[0].name;
+                // this.ANIMATION_IDLE = firstAnimName;
+                // this.ANIMATION_WALK = firstAnimName; // 無理やり割り当て
+                // this.ANIMATION_RUN = firstAnimName; // 無理やり割り当て
+                
+                // console.log("仮割り当てされたアニメーション:");
+                // console.log(`- アイドル: ${this.ANIMATION_IDLE}`);
+                // console.log(`- 歩行: ${this.ANIMATION_WALK}`);
+                // console.log(`- 走行: ${this.ANIMATION_RUN}`);
                 
                 // モデル読み込み直後のアニメーション準備
                 setTimeout(() => {
-                    console.log('モデル読み込み完了: アイドルアニメーション初期化');
+                    console.log('モデル読み込み完了: アニメーション初期化試行');
                     this.currentAnimation = null;
-                    this.playAnimation(this.ANIMATION_IDLE);
+                    // アイドルアニメーション名が確定したら以下を有効化
+                    // this.playAnimation(this.ANIMATION_IDLE);
+                    
+                    // 暫定: 最初のアニメーションを再生してみる
+                    if(gltf.animations.length > 0 && this.animations[gltf.animations[0].name]) {
+                         console.log(`暫定的に最初のアニメーション ${gltf.animations[0].name} を再生します`);
+                         this.playAnimation(gltf.animations[0].name);
+                    }
                 }, 100);
             } else {
                 console.warn('モデルにアニメーションが含まれていません！');
@@ -187,7 +211,7 @@ class Character {
         }, 
         // 読み込み進捗状況
         (xhr) => {
-            console.log(`モデル読み込み進捗: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+            // console.log(`モデル読み込み進捗: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`); // ログが多いので一旦コメントアウト
         },
         // エラー処理
         (error) => {
