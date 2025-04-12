@@ -124,20 +124,21 @@ class Character {
     
     loadModel() {
         const loader = new GLTFLoader();
-        console.log('モデル読み込み開始: assets/characters/animals/tiger_001.glb');
+        console.log('モデル読み込み開始: ./assets/characters/animals/tiger_001.glb');
         
-        // Tigerモデルをロード
-        loader.load('assets/characters/animals/tiger_001.glb', 
+        // Tigerモデルをロード (パスの先頭に ./ を追加)
+        loader.load('./assets/characters/animals/tiger_001.glb', 
         (gltf) => {
             console.log('>>> モデル読み込み成功!');
             this.model = gltf.scene;
             console.log('>>> モデルオブジェクト:', this.model);
             
-            // モデルのスケールを調整（一旦等倍で読み込む）
-            this.model.scale.set(1, 1, 1); 
+            // モデルのスケールを調整（大きくする）
+            this.model.scale.set(2.0, 2.0, 2.0); 
             console.log('>>> スケール設定完了');
             
-            // モデルの向きは元のままにする（-Z方向が前方）
+            // モデルの向きは前後が逆なので180度回転
+            this.model.rotation.y = Math.PI; // 180度回転
             
             this.model.position.copy(this.position);
             console.log('>>> 位置設定完了', this.position);
@@ -196,60 +197,64 @@ class Character {
                 });
                 console.log('>>> アニメーションアクション保存完了');
                 
-                // --- アニメーション名のマッピング (モデルに合わせて調整が必要！) ---
-                // console.log("モデルのアニメーション名を確認し、以下を調整してください:");
-                // this.ANIMATION_IDLE = "???";  // 例: "Idle" や "Survey" など
-                // this.ANIMATION_WALK = "???";  // 例: "Walk" や "Run" など
-                // this.ANIMATION_RUN = "???";   // 例: "Run" や "Sprint" など
+                // --- アニメーション名の固定割り当て ---
+                // このモデルにはアニメーションがない可能性が高いので、
+                // 全てのアニメーションを同一のクリップにマッピングする
+                const firstAnimName = gltf.animations.length > 0 ? gltf.animations[0].name : null;
                 
-                // // 暫定: 最初のアニメーションをIdleとして使う
-                // const firstAnimName = gltf.animations[0].name;
-                // this.ANIMATION_IDLE = firstAnimName;
-                // this.ANIMATION_WALK = firstAnimName; // 無理やり割り当て
-                // this.ANIMATION_RUN = firstAnimName; // 無理やり割り当て
-                
-                // console.log("仮割り当てされたアニメーション:");
-                // console.log(`- アイドル: ${this.ANIMATION_IDLE}`);
-                // console.log(`- 歩行: ${this.ANIMATION_WALK}`);
-                // console.log(`- 走行: ${this.ANIMATION_RUN}`);
-                
-                // モデル読み込み直後のアニメーション準備
-                setTimeout(() => {
-                    console.log('>>> モデル読み込み完了: アニメーション初期化試行');
-                    this.currentAnimation = null;
-                    // アイドルアニメーション名が確定したら以下を有効化
-                    // this.playAnimation(this.ANIMATION_IDLE);
+                if (firstAnimName) {
+                    this.ANIMATION_IDLE = firstAnimName;
+                    this.ANIMATION_WALK = firstAnimName;
+                    this.ANIMATION_RUN = firstAnimName;
                     
-                    // 暫定: 最初のアニメーションを再生してみる
-                    if(gltf.animations.length > 0 && this.animations[gltf.animations[0].name]) {
-                         const firstAnimName = gltf.animations[0].name;
-                         console.log(`>>> 暫定的に最初のアニメーション ${firstAnimName} を再生します`);
-                         try {
-                             this.playAnimation(firstAnimName);
-                             console.log(`>>> ${firstAnimName} 再生開始`);
-                         } catch (e) {
-                             console.error(`>>> ${firstAnimName} の再生エラー:`, e);
-                         }
-                    }
-                }, 100);
+                    console.log(">>> アニメーション割り当て完了:");
+                    console.log(`>>> - アイドル: ${this.ANIMATION_IDLE}`);
+                    console.log(`>>> - 歩行: ${this.ANIMATION_WALK}`);
+                    console.log(`>>> - 走行: ${this.ANIMATION_RUN}`);
+                
+                    // モデル読み込み直後のアニメーション準備
+                    setTimeout(() => {
+                        console.log('>>> モデル読み込み完了: アニメーション初期化');
+                        this.currentAnimation = null;
+                        
+                        try {
+                            this.playAnimation(this.ANIMATION_IDLE);
+                            console.log(`>>> ${this.ANIMATION_IDLE} 再生開始`);
+                        } catch (e) {
+                            console.error(`>>> アニメーション再生エラー:`, e);
+                        }
+                    }, 100);
+                } else {
+                    console.warn('>>> 有効なアニメーションが見つかりません。モデルは静止したままです。');
+                }
             } else {
                 console.warn('>>> モデルにアニメーションが含まれていません！');
             }
         }, 
         // 読み込み進捗状況
         (xhr) => {
-            // 進捗ログは一旦省略
+            console.log(`>>> モデル読み込み進捗: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
         },
         // エラー処理
         (error) => {
             console.error('>>> モデル読み込みエラー発生!', error);
+            
+            // エラーの詳細情報を出力
+            if (error.target && error.target.status) {
+                console.error(`>>> HTTPステータス: ${error.target.status}`);
+            }
+            if (error.message) {
+                console.error(`>>> エラーメッセージ: ${error.message}`);
+            }
+            console.error('>>> 完全なエラーオブジェクト:', error);
         });
     }
     
     // アニメーション再生（フェード処理付き） => （即時切り替えに変更）
     playAnimation(animationName) {
         if (!this.mixer || !this.animations[animationName]) {
-            console.warn(`アニメーション "${animationName}" が存在しません`);
+            // アニメーションが存在しない場合は静的なポーズのままにする
+            // console.warn(`アニメーション "${animationName}" が存在しません`);
             return false;
         }
         
@@ -393,7 +398,8 @@ class Character {
             this.model.position.copy(this.position);
             // モデルのY軸回転を設定 (向きベクトルから角度計算)
             const targetAngle = Math.atan2(this.direction.x, this.direction.z);
-            this.model.rotation.y = targetAngle; 
+            // 注意: モデルの初期向きが180度回転しているため、角度調整が必要
+            this.model.rotation.y = Math.PI + targetAngle;  // 初期の180度回転を含める
         } else {
             // ダミーボックスも更新
              this.dummyBox.position.copy(this.position);
@@ -403,14 +409,10 @@ class Character {
         this.arrowHelper.position.copy(this.position);
         this.arrowHelper.setDirection(this.direction);
 
-        // 5. アニメーションの再生
-        this.playAnimation(targetAnimation);
-        
-        // lastPosition の更新を移動後に行う (スタック検出用)
-        // Note: タップ移動の場合、スタック検出は移動判定ブロック内で行う方が良いかも
-        // if (!this.targetPosition) { // Only update lastPosition if not tap-moving?
-        //     this.lastPosition.copy(this.position);
-        // }
+        // 5. アニメーションの再生（アニメーションがあれば）
+        if (this.mixer && Object.keys(this.animations).length > 0) {
+            this.playAnimation(targetAnimation);
+        }
     }
     
     getPosition() {
